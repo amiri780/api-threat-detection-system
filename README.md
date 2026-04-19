@@ -13,8 +13,7 @@
 > API istek loglarından makine öğrenmesi kullanarak tehditleri otomatik tespit eden ikili sınıflandırıcı.  
 > **Stacking Ensemble** (XGBoost + LightGBM + CatBoost) + **SHAP** açıklanabilirlik analizi.
 
-**Öğrenci:** Mohammad Juma Amiri | **No:** 20260819001  
-**Ders:** Makine Öğrenimi — 2025–2026 Bahar Dönemi
+
 
 ---
 
