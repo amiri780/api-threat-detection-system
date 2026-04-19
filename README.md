@@ -1,2 +1,21 @@
-# api-threat-detection-system
-🛡️ ML-based binary classifier that detects API threats (SQLi, DDoS, XSS, Brute Force) from request logs — Stacking Ensemble with XGBoost, LightGBM, CatBoost &amp; SHAP explainability
+# API Threat Detection System
+
+Machine Learning based real-time API threat detection system.
+
+## Features
+- Real-time API traffic analysis
+- Threat detection
+- Bot activity detection
+- Dashboard monitoring
+
+## Technologies
+- Python
+- FastAPI
+- Streamlit
+- Scikit-learn
+
+## Run
+```bash
+pip install -r requirements.txt
+uvicorn app:app --reload
+streamlit run dashboard.py
