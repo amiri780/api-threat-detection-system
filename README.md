@@ -21,6 +21,7 @@
 ## 📌 İçindekiler
 
 - [Problem Tanımı](#-problem-tanımı)
+- [Canlı Dashboard](#-canlı-dashboard)
 - [Veri Seti](#-veri-seti)
 - [Özellik Mühendisliği](#-özellik-mühendisliği)
 - [Model Pipeline](#-model-pipeline)
@@ -44,6 +45,18 @@ Modern web uygulamalarında API güvenliği kritik bir sorun haline gelmiştir. 
 
 - **Hedef Değişken:** `label` → `0 = Normal`, `1 = Tehdit`
 - **Problem Tipi:** İkili Sınıflandırma (Binary Classification)
+
+---
+
+## 📸 Canlı Dashboard
+
+![Dashboard](images/dashboard.png)
+
+Gerçek zamanlı API tehdit izleme paneli. Normal ve saldırı istekleri canlı olarak gönderilip model tarafından sınıflandırılmaktadır.
+
+- **3.983** toplam istek analiz edildi
+- **%19.3** tehdit oranı tespit edildi
+- **210 ms** ortalama servis yanıt süresi
 
 ---
 
@@ -85,9 +98,10 @@ Ham veriden şu türetilmiş özellikler oluşturuldu:
 | `has_payload` | Payload varlığı (0/1) |
 | `payload_length` | Payload karakter uzunluğu |
 | `payload_threat_score` | `OR 1=1`, `DROP TABLE`, `alert(` gibi tehdit anahtar kelime sayısı |
+| `threat_signal_sum` | Tüm tehdit sinyallerinin toplamı |
+| `error_with_payload` | Hatalı HTTP kodu + payload kombinasyon özelliği |
+| `hour_of_day` | İsteğin günün hangi saatinde yapıldığı |
 | `endpoint_sensitivity` | Endpoint bazlı tarihsel tehdit oranı |
-
-> `is_bot_agent` ve `payload_threat_score`, Feature Importance grafiklerinde her modelde üst sıralarda yer aldı.
 
 ---
 
@@ -137,28 +151,46 @@ Threat (1) / Normal (0)
 
 ## 🎯 Model Performansı
 
-> ℹ️ Notebook'u çalıştırdıktan sonra bu tabloyu gerçek sonuçlarınızla doldurun.
+### Default vs Tuned Karşılaştırması
 
-| Model | Accuracy | Precision | Recall | F1-Score | ROC-AUC |
-|---|---|---|---|---|---|
-| Random Forest (default) | — | — | — | — | — |
-| Random Forest (tuned) | — | — | — | — | — |
-| XGBoost (default) | — | — | — | — | — |
-| XGBoost (tuned) | — | — | — | — | — |
-| CatBoost (default) | — | — | — | — | — |
-| CatBoost (Optuna) | — | — | — | — | — |
-| LightGBM (default) | — | — | — | — | — |
-| LightGBM (Optuna) | — | — | — | — | — |
-| **Stacking Ensemble** | **—** | **—** | **—** | **—** | **—** |
+![Model Karşılaştırma](images/model_comparison.png)
+
+| Model | F1 (Default) | F1 (Tuned) | ROC-AUC (Default) | ROC-AUC (Tuned) |
+|---|---|---|---|---|
+| CatBoost | 0.957 | 0.957 | 0.991 | 0.991 |
+| LightGBM | 0.957 | 0.952 | 0.991 | 0.991 |
+| Random Forest | 0.948 | 0.951 | 0.983 | 0.984 |
+| XGBoost | 0.951 | **0.955** | 0.990 | **0.991** |
+| **Stacking Ensemble** | — | **En İyi** | — | — |
+
+### Final Test Seti — Stacking Ensemble
+
+![Confusion Matrix](images/confusion_matrix.png)
+
+| Metrik | Değer |
+|---|---|
+| **True Positive (Tehdit doğru)** | 2.914 |
+| **True Negative (Normal doğru)** | 4.540 |
+| **False Positive (Yanlış alarm)** | 71 |
+| **False Negative (Kaçırılan tehdit)** | 160 |
+| **Precision** | %97.6 |
+| **Recall** | %94.8 |
+| **F1-Score** | %96.2 |
 
 ---
 
 ## 🔬 SHAP Explainability
 
-Her model tahmini için **SHAP (SHapley Additive exPlanations)** değerleri hesaplanarak hangi özelliğin tehdit kararını ne kadar etkilediği görselleştirildi.
+![SHAP Summary](images/shap_summary.png)
 
-- **Summary Plot (Bee Swarm):** Her özelliğin dağılım bazlı etkisi
-- **Bar Plot:** Global özellik önemi sıralaması
+**SHAP (SHapley Additive exPlanations)** analizi ile XGBoost modelindeki her özelliğin tehdit kararına bireysel katkısı görselleştirildi.
+
+**En etkili özellikler (sırasıyla):**
+1. `payload_length` — En güçlü tehdit sinyali
+2. `threat_signal_sum` — Toplam tehdit skoru
+3. `http_status` — HTTP hata kodları
+4. `http_method_enc` — Yüksek riskli HTTP metodları
+5. `response_time_ms` — Yanıt süresi anomalisi
 
 ```python
 import shap
@@ -243,8 +275,8 @@ python dashboard.py
   "threat_type": "SQLi",
   "confidence": 0.97,
   "shap_explanation": {
-    "payload_threat_score": 0.61,
-    "is_bot_agent": 0.22,
+    "payload_length": 0.61,
+    "threat_signal_sum": 0.22,
     "composite_risk": 0.14
   }
 }
@@ -267,6 +299,11 @@ api-threat-detection-system/
 ├── dashboard.py            # Gerçek zamanlı izleme paneli
 ├── api_threat.csv          # Veri seti (50.000 satır)
 ├── requirements.txt        # Bağımlılıklar
+├── images/
+│   ├── dashboard.png       # Canlı dashboard ekranı
+│   ├── confusion_matrix.png
+│   ├── shap_summary.png
+│   └── model_comparison.png
 ├── LICENSE                 # MIT Lisansı
 └── README.md
 ```
@@ -278,8 +315,7 @@ api-threat-detection-system/
 1. **SMOTE** ile sınıf dengesizliğini giderme
 2. **Kafka** entegrasyonu ile gerçek zamanlı akış verisi analizi
 3. **Docker** ile containerized deployment
-4. **Streamlit** demo arayüzü
-5. Daha büyük ve gerçek log veri setleri ile yeniden eğitim
+4. Daha büyük ve gerçek log veri setleri ile yeniden eğitim
 
 ---
 
